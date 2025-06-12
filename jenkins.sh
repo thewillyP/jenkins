@@ -13,6 +13,7 @@ source ~/.secrets/env.sh
 
 # Ensure the postgres directory exists
 mkdir -p "$JENKINS_DATA_DIR"
+mkdir -p $JENKINS_TMP_DIR
 
 
 
@@ -23,6 +24,7 @@ echo "export DB_HOST_OHO=$(hostname)" >> ~/.secrets/env.sh
 singularity run --containall --cleanenv \
   --env JENKINS_OPTS="--httpPort=$JENKINS_PORT" \
   --bind $JENKINS_DATA_DIR:/var/jenkins_home \
+  --bind $JENKINS_TMP_DIR:/tmp \
   docker://jenkins/jenkins:lts-jdk17@sha256:3cc41bac7bdeba7fef4c5421f72d0143b08b288362e539143aed454a6c7dade5
 
 
