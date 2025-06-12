@@ -25,7 +25,6 @@ singularity run --containall --cleanenv \
   --env JENKINS_OPTS="--httpPort=$JENKINS_PORT" \
   --bind $JENKINS_DATA_DIR:/var/jenkins_home \
   --bind $JENKINS_TMP_DIR:/tmp \
-  --memory-swap -1 \
   docker://jenkins/jenkins:lts-jdk17@sha256:3cc41bac7bdeba7fef4c5421f72d0143b08b288362e539143aed454a6c7dade5
 
 
