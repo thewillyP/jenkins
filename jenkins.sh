@@ -22,7 +22,7 @@ if [ ! -f "$DNS_IP_FILE" ]; then
 fi
 
 # Run update_dns.sh directly by streaming from GitHub to bash
-curl -sL https://raw.githubusercontent.com/thewillyP/jenkins/main/update_dns.sh | bash
+curl -sL https://raw.githubusercontent.com/thewillyP/jenkins/main/update_dns.sh | bash -s jenkins
 
 # Run Jenkins container with singularity
 singularity run --containall --cleanenv --no-home \
