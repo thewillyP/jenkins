@@ -13,12 +13,9 @@ DNS_IP=$(< ~/willyp_ip.txt)
 
 # Get public key from current user
 PUBKEY=$(cat ~/.ssh/id_rsa.pub)
-
-# Username = whoever submitted this script
 USERNAME="$USER"
 
-# Run container via singularity with all proper envs
-singularity exec \
+singularity run \
   --env PUBLIC_KEY="$PUBKEY" \
   --env USER_NAME="$USERNAME" \
   --env TZ=UTC \
@@ -26,5 +23,4 @@ singularity exec \
   --env PGID=$(id -g) \
   --dns "$DNS_IP" \
   --bind ~/.ssh:/config/.ssh \
-  docker://lscr.io/linuxserver/openssh-server \
-  /init
+  docker://lscr.io/linuxserver/openssh-server
