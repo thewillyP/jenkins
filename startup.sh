@@ -28,7 +28,10 @@ curl -sL https://raw.githubusercontent.com/thewillyP/jenkins/main/update_dns.sh 
 curl -s https://raw.githubusercontent.com/thewillyP/jenkins/main/devbox.sh | sbatch
 
 # Recursively submit this script with dependency afterok on current job finishing successfully
-curl -s https://raw.githubusercontent.com/thewillyP/jenkins/main/startup.sh | sbatch --dependency=afterok:$SLURM_JOB_ID -
+TMP_SCRIPT=$(mktemp)
+curl -s https://raw.githubusercontent.com/thewillyP/jenkins/main/startup.sh > "$TMP_SCRIPT"
+sbatch --dependency=afterok:$SLURM_JOB_ID "$TMP_SCRIPT"
+rm "$TMP_SCRIPT"
 
 # Run Jenkins container
 singularity run --containall --cleanenv --no-home \
