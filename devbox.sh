@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=devbox-ssh
+#SBATCH --job-name=devbox
 #SBATCH --output="/vast/wlp9800/logs/%x-%j.out"
 #SBATCH --error="/vast/wlp9800/logs/%x-%j.err"
 #SBATCH --time=06:00:00
