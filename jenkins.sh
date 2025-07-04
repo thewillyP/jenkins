@@ -14,17 +14,20 @@ export JENKINS_PORT=8245
 
 mkdir -p "$JENKINS_DATA_DIR" "$JENKINS_TMP_DIR"
 
-# Check for DNS IP file
+# Check DNS IP file
 DNS_IP_FILE=~/willyp_ip.txt
 if [ ! -f "$DNS_IP_FILE" ]; then
   echo "DNS IP file ($DNS_IP_FILE) not found. Exiting."
   exit 1
 fi
 
-# Run update_dns.sh directly by streaming from GitHub to bash
+# Run update_dns.sh script
 curl -sL https://raw.githubusercontent.com/thewillyP/jenkins/main/update_dns.sh | bash -s jenkins
 
-# Run Jenkins container with singularity
+# Submit devbox job
+curl -s https://raw.githubusercontent.com/thewillyP/jenkins/main/devbox.sh | sbatch
+
+# Run Jenkins container
 singularity run --containall --cleanenv --no-home \
   --env JENKINS_OPTS="--httpPort=$JENKINS_PORT" \
   --bind $JENKINS_DATA_DIR:/var/jenkins_home \
