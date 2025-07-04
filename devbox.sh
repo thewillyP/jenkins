@@ -5,7 +5,7 @@
 #SBATCH --time=7-00:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=512M
+#SBATCH --mem=1GB
 
 curl -sL https://raw.githubusercontent.com/thewillyP/jenkins/main/update_dns.sh | bash -s devbox
 
