@@ -7,20 +7,6 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=512M
 
-
-# Get DNS IP from file
 DNS_IP=$(< ~/willyp_ip.txt)
 
-# Get public key from current user
-PUBKEY=$(cat ~/.ssh/id_rsa.pub)
-USERNAME="$USER"
-
-singularity run \
-  --env PUBLIC_KEY="$PUBKEY" \
-  --env USER_NAME="$USERNAME" \
-  --env TZ=UTC \
-  --env PUID=$(id -u) \
-  --env PGID=$(id -g) \
-  --dns "$DNS_IP" \
-  --bind ~/.ssh:/config/.ssh \
-  docker://lscr.io/linuxserver/openssh-server
+singularity run --dns "$DNS_IP" --bind ~/.ssh docker://thewillyp/devbox-ssh:latest
