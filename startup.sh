@@ -27,6 +27,9 @@ curl -sL https://raw.githubusercontent.com/thewillyP/jenkins/main/update_dns.sh 
 # Submit devbox job
 curl -s https://raw.githubusercontent.com/thewillyP/jenkins/main/devbox.sh | sbatch
 
+# Recursively submit this script with dependency afterok on current job finishing successfully
+curl -s https://raw.githubusercontent.com/thewillyP/jenkins/main/startup.sh | sbatch --dependency=afterok:$SLURM_JOB_ID -
+
 # Run Jenkins container
 singularity run --containall --cleanenv --no-home \
   --env JENKINS_OPTS="--httpPort=$JENKINS_PORT" \
