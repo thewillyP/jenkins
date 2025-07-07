@@ -4,14 +4,14 @@ def call(Map params) {
         agent any
 
         environment {
-            SSH_USER = params.SSH_USER
-            IMAGE = params.IMAGE
-            SCRATCH_DIR = params.SCRATCH_DIR
-            LOG_DIR = params.LOG_DIR
+            SSH_USER = "${params.SSH_USER}"
+            IMAGE = "${params.IMAGE}"
+            SCRATCH_DIR = "${params.SCRATCH_DIR}"
+            LOG_DIR = "${params.LOG_DIR}"
             SIF_PATH = "${params.SCRATCH_DIR}/images/${params.IMAGE}.sif"
             OVERLAY_PATH = "${params.SCRATCH_DIR}/${params.IMAGE}.ext3"
             TMP_DIR = "${params.SCRATCH_DIR}/tmp"
-            DOCKER_URL = params.DOCKER_URL
+            DOCKER_URL = "${params.DOCKER_URL}"
             SCRIPT_BASE_URL = 'https://raw.githubusercontent.com/thewillyP/jenkins/main/library'
         }
 
@@ -29,7 +29,7 @@ def call(Map params) {
             stage('Cancel Existing Jobs') {
                 steps {
                     sh """
-                    ssh -o StrictHostKeyChecking=no ${sshUser}@${EXEC_HOST} 'curl -fsSL ${SCRIPT_BASE_URL}/cancel_jobs.sh | bash -s ${sshUser} ${imageBaseName}'
+                    ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} 'curl -fsSL ${SCRIPT_BASE_URL}/cancel_jobs.sh | bash -s ${SSH_USER} ${IMAGE}'
                     """
                 }
             }
@@ -38,18 +38,18 @@ def call(Map params) {
                 steps {
                     script {
                         def imageExists = sh(
-                            script: "ssh -o StrictHostKeyChecking=no ${sshUser}@${EXEC_HOST} '[ -f ${SIF_PATH} ] && echo exists || echo missing'",
+                            script: "ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} '[ -f ${SIF_PATH} ] && echo exists || echo missing'",
                             returnStdout: true
                         ).trim()
 
-                        if (forceRebuild || imageExists == "missing") {
+                        if (params.forceRebuild || imageExists == "missing") {
                             echo "Submitting image build job..."
                             def buildOut = sh(
                                 script: """
-                                ssh -o StrictHostKeyChecking=no ${sshUser}@${EXEC_HOST} \\
+                                ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} \\
                                 'curl -fsSL ${SCRIPT_BASE_URL}/build_image.sh | bash -s \\
-                                "${scratchDir}" "${OVERLAY_PATH}" "${SIF_PATH}" "${dockerUrl}" "${logDir}" "${imageBaseName}" \\
-                                "${buildMem}" "${buildCPUs}" "${overlaySrc}" "${buildTime}"'
+                                "${SCRATCH_DIR}" "${OVERLAY_PATH}" "${SIF_PATH}" "${DOCKER_URL}" "${LOG_DIR}" "${IMAGE}" \\
+                                "${params.buildMem}" "${params.buildCPUs}" "${params.overlaySrc}" "${params.buildTime}"'
                                 """,
                                 returnStdout: true
                             ).trim()
@@ -67,7 +67,7 @@ def call(Map params) {
             stage('Create TMP Directory') {
                 steps {
                     sh """
-                    ssh -o StrictHostKeyChecking=no ${sshUser}@${EXEC_HOST} 'mkdir -p ${TMP_DIR}'
+                    ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} 'mkdir -p ${TMP_DIR}'
                     """
                 }
             }
@@ -75,10 +75,10 @@ def call(Map params) {
             stage('Submit Run Job') {
                 steps {
                     sh """
-                    ssh -o StrictHostKeyChecking=no ${sshUser}@${EXEC_HOST} \\
+                    ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} \\
                     'curl -fsSL ${SCRIPT_BASE_URL}/run_job.sh | bash -s \\
-                    "${logDir}" "${SIF_PATH}" "${OVERLAY_PATH}" "${sshUser}" "" "${BUILD_JOB_ID}" \\
-                    "${runMem}" "${runCPUs}" "${runTime}" "${imageBaseName}" "${TMP_DIR}" "" "${entrypointUrl}"'
+                    "${LOG_DIR}" "${SIF_PATH}" "${OVERLAY_PATH}" "${SSH_USER}" "" "${BUILD_JOB_ID}" \\
+                    "${params.runMem}" "${params.runCPUs}" "${params.runTime}" "${IMAGE}" "${TMP_DIR}" "" "${params.entrypointUrl}"'
                     """
                 }
             }
