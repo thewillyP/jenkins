@@ -1,4 +1,5 @@
 def call(Map params) {
+    def runJobId = ""
 
     pipeline {
         agent any
@@ -77,16 +78,30 @@ def call(Map params) {
                         def binds = params.binds ?: ""
                         def useGpu = params.useGpu ? "true" : "false"
 
-                        sh """
-                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} \\
-                        'curl -fsSL ${SCRIPT_BASE_URL}/run_job.sh | bash -s \\
-                        "${LOG_DIR}" "${SIF_PATH}" "${OVERLAY_PATH}" "${SSH_USER}" "${BUILD_JOB_ID}" \\
-                        "${params.runMem}" "${params.runCPUs}" "${params.runTime}" "${IMAGE}" "${TMP_DIR}" \\
-                        "${binds}" "${params.entrypointUrl}" "${useGpu}"'
-                        """
+                        def runOut = sh(
+                            script: """
+                            ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} \\
+                            'curl -fsSL ${SCRIPT_BASE_URL}/run_job.sh | bash -s \\
+                            "${LOG_DIR}" "${SIF_PATH}" "${OVERLAY_PATH}" "${SSH_USER}" "${BUILD_JOB_ID}" \\
+                            "${params.runMem}" "${params.runCPUs}" "${params.runTime}" "${IMAGE}" "${TMP_DIR}" \\
+                            "${binds}" "${params.entrypointUrl}" "${useGpu}"'
+                            """,
+                            returnStdout: true
+                        ).trim()
+
+                        echo "Run job submission output:\n${runOut}"
+                        def match = (runOut =~ /Submitted batch job (\\d+)/)
+                        if (match) {
+                            runJobId = match[0][1]
+                            echo "Run Job ID: ${runJobId}"
+                        } else {
+                            error("Failed to extract run job ID from output")
+                        }
                     }
                 }
             }
         }
     }
+
+    return runJobId
 }
