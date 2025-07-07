@@ -89,10 +89,10 @@ def call(Map params) {
                             returnStdout: true
                         ).trim()
 
-                        echo "Run job submission output:\n${runOut}"
-                        def match = (runOut =~ /Submitted batch job (\\d+)/)
-                        if (match) {
-                            runJobId = match[0][1]
+                        echo "Run job submission output: ${runOut}"
+                        def jobId = runOut.split(' ').last()
+                        if (jobId.isInteger()) {
+                            runJobId = jobId
                             echo "Run Job ID: ${runJobId}"
                         } else {
                             error("Failed to extract run job ID from output")
