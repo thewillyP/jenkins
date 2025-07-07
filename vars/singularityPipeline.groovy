@@ -4,14 +4,14 @@ def call(Map params) {
         agent any
 
         environment {
-            SSH_USER = "${params.SSH_USER}"
-            IMAGE = "${params.IMAGE}"
-            SCRATCH_DIR = "${params.SCRATCH_DIR}"
-            LOG_DIR = "${params.LOG_DIR}"
-            SIF_PATH = "${params.SCRATCH_DIR}/images/${params.IMAGE}.sif"
-            OVERLAY_PATH = "${params.SCRATCH_DIR}/${params.IMAGE}.ext3"
-            TMP_DIR = "${params.SCRATCH_DIR}/tmp"
-            DOCKER_URL = "${params.DOCKER_URL}"
+            SSH_USER    = "${params.sshUser}"
+            IMAGE       = "${params.image}"
+            SCRATCH_DIR = "${params.scratchDir}"
+            LOG_DIR     = "${params.logDir}"
+            SIF_PATH    = "${params.scratchDir}/images/${params.image}.sif"
+            OVERLAY_PATH= "${params.scratchDir}/${params.image}.ext3"
+            TMP_DIR     = "${params.scratchDir}/tmp"
+            DOCKER_URL  = "${params.dockerUrl}"
             SCRIPT_BASE_URL = 'https://raw.githubusercontent.com/thewillyP/jenkins/main/library'
         }
 
