@@ -16,7 +16,6 @@ def call(Map params) {
         }
 
         stages {
-
             stage('Detect Hostname') {
                 steps {
                     script {
@@ -74,12 +73,18 @@ def call(Map params) {
 
             stage('Submit Run Job') {
                 steps {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} \\
-                    'curl -fsSL ${SCRIPT_BASE_URL}/run_job.sh | bash -s \\
-                    "${LOG_DIR}" "${SIF_PATH}" "${OVERLAY_PATH}" "${SSH_USER}" "" "${BUILD_JOB_ID}" \\
-                    "${params.runMem}" "${params.runCPUs}" "${params.runTime}" "${IMAGE}" "${TMP_DIR}" "" "${params.entrypointUrl}"'
-                    """
+                    script {
+                        def binds = params.binds ?: ""
+                        def useGpu = params.useGpu ? "true" : "false"
+
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} \\
+                        'curl -fsSL ${SCRIPT_BASE_URL}/run_job.sh | bash -s \\
+                        "${LOG_DIR}" "${SIF_PATH}" "${OVERLAY_PATH}" "${SSH_USER}" "${BUILD_JOB_ID}" \\
+                        "${params.runMem}" "${params.runCPUs}" "${params.runTime}" "${IMAGE}" "${TMP_DIR}" \\
+                        "${binds}" "${params.entrypointUrl}" "${useGpu}"'
+                        """
+                    }
                 }
             }
         }

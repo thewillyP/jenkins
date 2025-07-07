@@ -3,17 +3,17 @@ LOG_DIR=$1
 SIF_PATH=$2
 OVERLAY_PATH=$3
 SSH_USER=$4
-VARIANT=$5
-BUILD_JOB_ID=$6
-MEMORY=$7
-CPUS=$8
-TIME=$9
-IMAGE=${10}
-TMP_DIR=${11}
-USER_BINDS=${12}
-SCRIPT_URL=${13}
+BUILD_JOB_ID=$5
+MEMORY=$6
+CPUS=$7
+TIME=$8
+IMAGE=$9
+TMP_DIR=${10}
+USER_BINDS=${11}
+SCRIPT_URL=${12}
+USE_GPU=${13}
 
-if [ "$VARIANT" = "gpu" ]; then
+if [ "$USE_GPU" = "true" ]; then
     GPU_SLURM="#SBATCH --gres=gpu:1"
     GPU_SINGULARITY="--nv"
 else
