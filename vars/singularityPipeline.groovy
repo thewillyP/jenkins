@@ -43,8 +43,8 @@ def call(Map params) {
                         returnStdout: true
                     ).trim()
 
-                    env.BUILD_JOB_ID = (buildOut =~ /Submitted batch job (\d+)/)?.getAt(0)?.getAt(1) ?: ""
-                    echo "Build job submitted with ID: ${env.BUILD_JOB_ID}"
+                    BUILD_JOB_ID = (buildOut =~ /Submitted batch job (\d+)/)?.getAt(0)?.getAt(1) ?: ""
+                    echo "Build job submitted with ID: ${BUILD_JOB_ID}"
                 } else {
                     BUILD_JOB_ID = ""
                 }
