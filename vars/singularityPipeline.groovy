@@ -23,17 +23,20 @@ def call(Map params) {
                     ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} \
                         env AWS_ACCESS_KEY_ID=\${AWS_ACCESS_KEY_ID} \
                             AWS_SECRET_ACCESS_KEY=\${AWS_SECRET_ACCESS_KEY} \
-                            AWS_REGION=us-east-1 '
+                            AWS_DEFAULT_REGION=us-east-1 '
                         mkdir -p /tmp/scripts
                         curl -fsSL ${SCRIPT_BASE_URL}/cancel_jobs.sh -o /tmp/scripts/cancel_jobs.sh
                         curl -fsSL ${SCRIPT_BASE_URL}/cancel_jobs.sh.sig -o /tmp/scripts/cancel_jobs.sh.sig
-                        singularity run \
-                            --env AWS_ACCESS_KEY_ID=\${AWS_ACCESS_KEY_ID},AWS_SECRET_ACCESS_KEY=\${AWS_SECRET_ACCESS_KEY},AWS_REGION=\${AWS_REGION} \
-                            docker://amazon/aws-cli ssm get-parameter \
+                        singularity exec \
+                            --cleanenv \
+                            --env AWS_ACCESS_KEY_ID=\${AWS_ACCESS_KEY_ID},AWS_SECRET_ACCESS_KEY=\${AWS_SECRET_ACCESS_KEY},AWS_DEFAULT_REGION=\${AWS_DEFAULT_REGION} \
+                            docker://amazon/aws-cli \
+                            /bin/sh -c 'echo "AWS_ACCESS_KEY_ID=\${AWS_ACCESS_KEY_ID} AWS_DEFAULT_REGION=\${AWS_DEFAULT_REGION}"; aws ssm get-parameter \
                             --name "/gpg/public-key" \
                             --with-decryption \
+                            --region us-east-1 \
                             --query Parameter.Value \
-                            --output text > /tmp/scripts/public.key
+                            --output text' > /tmp/scripts/public.key
                         gpg --import /tmp/scripts/public.key
                         gpg --verify /tmp/scripts/cancel_jobs.sh.sig /tmp/scripts/cancel_jobs.sh
                         if [ \$? -eq 0 ]; then
