@@ -17,18 +17,15 @@ def call(Map params) {
             SSH_USER = SSH_USER // to prevent unused warning
             IMAGE = IMAGE
             LOG_DIR = LOG_DIR
-            // Detect exec host
             def EXEC_HOST = sh(script: "hostname", returnStdout: true).trim()
             echo "Executor host: ${EXEC_HOST}"
 
-            // Cancel existing jobs
             stage('Cancel Existing Jobs') {
                 sh """
                 ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} 'curl -fsSL ${SCRIPT_BASE_URL}/cancel_jobs.sh | bash -s ${SSH_USER} ${IMAGE}'
                 """
             }
 
-            // Build image if needed
             stage('Build Image If Needed') {
                 def imageExists = sh(
                     script: "ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} '[ -f ${SIF_PATH} ] && echo exists || echo missing'",
@@ -36,7 +33,6 @@ def call(Map params) {
                 ).trim()
 
                 if (params.forceRebuild || imageExists == "missing") {
-                    echo "Submitting image build job..."
                     def buildOut = sh(
                         script: """
                         ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} \\
@@ -47,27 +43,19 @@ def call(Map params) {
                         returnStdout: true
                     ).trim()
 
-                    def matcher = (buildOut =~ /Submitted batch job (\\d+)/)
-                    if (matcher) {
-                        BUILD_JOB_ID = matcher[0][1]
-                        echo "Build Job ID: ${BUILD_JOB_ID}"
-                    } else {
-                        error("Failed to extract build job ID from output")
-                    }
+                    env.BUILD_JOB_ID = (buildOut =~ /Submitted batch job (\d+)/)?.getAt(0)?.getAt(1) ?: ""
+                    echo "Build job submitted with ID: ${env.BUILD_JOB_ID}"
                 } else {
-                    echo "Image already exists. Skipping build."
                     BUILD_JOB_ID = ""
                 }
             }
 
-            // Create TMP directory
             stage('Create TMP Directory') {
                 sh """
                 ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} 'mkdir -p ${TMP_DIR}'
                 """
             }
 
-            // Submit run job
             stage('Submit Run Job') {
                 def binds = params.binds ?: ""
                 def useGpu = params.useGpu ? "true" : "false"
@@ -83,14 +71,8 @@ def call(Map params) {
                     returnStdout: true
                 ).trim()
 
-                echo "Run job submission output: ${runOut}"
-                def jobId = runOut.split(' ').last()
-                if (jobId.isInteger()) {
-                    runJobId = jobId
-                    echo "Run Job ID: ${runJobId}"
-                } else {
-                    error("Failed to extract run job ID from output")
-                }
+                runJobId = (runOut =~ /Submitted batch job (\d+)/)?.getAt(0)?.getAt(1) ?: ""
+                echo "Run job submitted with ID: ${runJobId}"
             }
         }
     }
