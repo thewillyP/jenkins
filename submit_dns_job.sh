@@ -27,6 +27,15 @@ sbatch <<EOF
 
 set -euo pipefail
 
+echo "[DNS-JOB] Checking job ${RUN_JOB_ID} state..."
+
+JOB_STATE=\$(sacct -j ${RUN_JOB_ID} --format=State --noheader | head -n1 | awk '{print \$1}')
+
+if [[ "\$JOB_STATE" != "RUNNING" ]]; then
+    echo "[DNS-JOB] Job \${RUN_JOB_ID} is in state '\$JOB_STATE' — not running, exiting cleanly."
+    exit 0
+fi
+
 echo "[DNS-JOB] Resolving host for job ${RUN_JOB_ID}..."
 HOSTNAME=\$(sacct -j ${RUN_JOB_ID} --format=NodeList --noheader | awk '{print \$1}' | head -n 1)
 
