@@ -20,14 +20,11 @@ def call(Map params) {
             stage('Cancel Existing Jobs') {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials', accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
                     sh """
-                    export AWS_ACCESS_KEY_ID=\${AWS_ACCESS_KEY_ID}
-                    export AWS_SECRET_ACCESS_KEY=\${AWS_SECRET_ACCESS_KEY}
-                    ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} '
+                    ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} \
+                        env AWS_ACCESS_KEY_ID=\${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=\${AWS_SECRET_ACCESS_KEY} '
                         mkdir -p /tmp/scripts
                         curl -fsSL ${SCRIPT_BASE_URL}/cancel_jobs.sh -o /tmp/scripts/cancel_jobs.sh
                         curl -fsSL ${SCRIPT_BASE_URL}/cancel_jobs.sh.sig -o /tmp/scripts/cancel_jobs.sh.sig
-                        export AWS_ACCESS_KEY_ID=\${AWS_ACCESS_KEY_ID}
-                        export AWS_SECRET_ACCESS_KEY=\${AWS_SECRET_ACCESS_KEY}
                         singularity run --env AWS_ACCESS_KEY_ID=\${AWS_ACCESS_KEY_ID},AWS_SECRET_ACCESS_KEY=\${AWS_SECRET_ACCESS_KEY} docker://amazon/aws-cli ssm get-parameter \
                         --name "/gpg/public-key" \
                         --with-decryption \
