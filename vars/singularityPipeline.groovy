@@ -27,9 +27,9 @@ def call(Map params) {
                         mkdir -p /tmp/scripts
                         curl -fsSL ${SCRIPT_BASE_URL}/cancel_jobs.sh -o /tmp/scripts/cancel_jobs.sh
                         curl -fsSL ${SCRIPT_BASE_URL}/cancel_jobs.sh.sig -o /tmp/scripts/cancel_jobs.sh.sig
-                        singularity run \
+                        singularity exec \
                             --env AWS_ACCESS_KEY_ID=\${AWS_ACCESS_KEY_ID},AWS_SECRET_ACCESS_KEY=\${AWS_SECRET_ACCESS_KEY},AWS_DEFAULT_REGION=\${AWS_DEFAULT_REGION} \
-                            docker://amazon/aws-cli ssm get-parameter \
+                            docker://amazon/aws-cli aws ssm get-parameter \
                             --name "/gpg/public-key" \
                             --with-decryption \
                             --query Parameter.Value \
