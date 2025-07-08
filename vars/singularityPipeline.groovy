@@ -8,10 +8,12 @@ def call(Map params) {
         def LOG_DIR     = params.logDir
         def SIF_PATH    = "${SCRATCH_DIR}/images/${IMAGE}.sif"
         def OVERLAY_PATH= "${SCRATCH_DIR}/${IMAGE}.ext3"
-        def TMP_DIR     = "${SCRATCH_DIR}/tmp"
+        def TMP_DIR     = "${SCRATCH_DIR}/tmp_${IMAGE}"
         def DOCKER_URL  = params.dockerUrl
         def BUILD_JOB_ID = ""
-        def REMOTE_SCRIPT_DIR = "/tmp/jenkins_scripts"
+        def REMOTE_SCRIPT_DIR = "/tmp/${sh(script: 'head /dev/urandom | tr -dc a-z0-9 | head -c 8', returnStdout: true).trim()}"
+        def EXEC_HOST = sh(script: "hostname", returnStdout: true).trim()
+        echo "Executor host: ${EXEC_HOST}"
 
         stage('Checkout Scripts') {
             checkout([
@@ -23,11 +25,6 @@ def call(Map params) {
             ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} 'mkdir -p ${REMOTE_SCRIPT_DIR}'
             scp -o StrictHostKeyChecking=no -r library ${SSH_USER}@${EXEC_HOST}:${REMOTE_SCRIPT_DIR}/
             """
-        }
-
-        stage('Detect Hostname') {
-            def EXEC_HOST = sh(script: "hostname", returnStdout: true).trim()
-            echo "Executor host: ${EXEC_HOST}"
         }
 
         stage('Cancel Existing Jobs') {
