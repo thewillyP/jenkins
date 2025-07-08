@@ -31,7 +31,7 @@ def call(Map params) {
                             --cleanenv \\
                             --env AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID},AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY},AWS_DEFAULT_REGION=us-east-1 \\
                             docker://amazon/aws-cli \\
-                            ssm get-parameter --name \"/gpg/public-key\" --with-decryption --region us-east-1 --query Parameter.Value --output text > /tmp/scripts/public.key
+                            ssm get-parameter --name \"/gpg/public-key\" --with-decryption --query Parameter.Value --output text > /tmp/scripts/public.key
                         gpg --import /tmp/scripts/public.key
                         gpg --verify /tmp/scripts/cancel_jobs.sh.sig /tmp/scripts/cancel_jobs.sh
                         if [ \$? -eq 0 ]; then
