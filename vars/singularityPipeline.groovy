@@ -14,9 +14,6 @@ def call(Map params) {
         def BUILD_JOB_ID = ""
 
         stage('Detect Hostname') {
-            SSH_USER = SSH_USER // to prevent unused warning
-            IMAGE = IMAGE
-            LOG_DIR = LOG_DIR
             def EXEC_HOST = sh(script: "hostname", returnStdout: true).trim()
             echo "Executor host: ${EXEC_HOST}"
 
@@ -45,8 +42,6 @@ def call(Map params) {
 
                     BUILD_JOB_ID = (buildOut =~ /Submitted batch job (\d+)/)?.getAt(0)?.getAt(1) ?: ""
                     echo "Build job submitted with ID: ${BUILD_JOB_ID}"
-                } else {
-                    BUILD_JOB_ID = ""
                 }
             }
 
@@ -59,6 +54,7 @@ def call(Map params) {
             stage('Submit Run Job') {
                 def binds = params.binds ?: ""
                 def useGpu = params.useGpu ? "true" : "false"
+                def exclusive = params.exclusive ? "true" : "false"
 
                 def runOut = sh(
                     script: """
@@ -66,7 +62,7 @@ def call(Map params) {
                     'curl -fsSL ${SCRIPT_BASE_URL}/run_job.sh | bash -s \\
                     "${LOG_DIR}" "${SIF_PATH}" "${OVERLAY_PATH}" "${SSH_USER}" "${BUILD_JOB_ID}" \\
                     "${params.runMem}" "${params.runCPUs}" "${params.runTime}" "${IMAGE}" "${TMP_DIR}" \\
-                    "${binds}" "${params.entrypointUrl}" "${useGpu}"'
+                    "${binds}" "${params.entrypointUrl}" "${useGpu}" "${exclusive}"'
                     """,
                     returnStdout: true
                 ).trim()

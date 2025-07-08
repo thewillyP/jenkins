@@ -12,6 +12,7 @@ TMP_DIR=${10}
 USER_BINDS=${11}
 SCRIPT_URL=${12}
 USE_GPU=${13}
+EXCLUSIVE=${14}
 
 if [ "$USE_GPU" = "true" ]; then
     GPU_SLURM="#SBATCH --gres=gpu:1"
@@ -27,6 +28,12 @@ else
     SLURM_DEPENDENCY=""
 fi
 
+if [ "$EXCLUSIVE" = "true" ]; then
+    SBATCH_EXCLUSIVE="#SBATCH --exclusive"
+else
+    SBATCH_EXCLUSIVE=""
+fi
+
 MANDATORY_BINDS="/home/${SSH_USER}/.ssh,${TMP_DIR}:/tmp"
 if [ -n "$USER_BINDS" ]; then
     FULL_BINDS="${MANDATORY_BINDS},${USER_BINDS}"
@@ -36,6 +43,7 @@ fi
 
 sbatch <<EOF
 #!/bin/bash
+${SBATCH_EXCLUSIVE}
 #SBATCH --job-name=run_${IMAGE}
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
