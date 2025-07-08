@@ -28,7 +28,7 @@ def call(Map params) {
                         curl -fsSL ${SCRIPT_BASE_URL}/cancel_jobs.sh.sig -o /tmp/scripts/cancel_jobs.sh.sig
                         export AWS_ACCESS_KEY_ID=\${AWS_ACCESS_KEY_ID}
                         export AWS_SECRET_ACCESS_KEY=\${AWS_SECRET_ACCESS_KEY}
-                        singularity exec --env AWS_ACCESS_KEY_ID=\${AWS_ACCESS_KEY_ID},AWS_SECRET_ACCESS_KEY=\${AWS_SECRET_ACCESS_KEY} docker://amazon/aws-cli aws ssm get-parameter \
+                        singularity run --env AWS_ACCESS_KEY_ID=\${AWS_ACCESS_KEY_ID},AWS_SECRET_ACCESS_KEY=\${AWS_SECRET_ACCESS_KEY} docker://amazon/aws-cli ssm get-parameter \
                         --name "/gpg/public-key" \
                         --with-decryption \
                         --region us-east-1 \
