@@ -63,23 +63,36 @@ def call(Map params) {
         }
 
         stage('Submit Run Job') {
-            def binds = params.binds ?: ""
-            def useGpu = params.useGpu ? "true" : "false"
-            def exclusive = params.exclusive ? "true" : "false"
+            withCredentials([[
+                $class: 'AmazonWebServicesCredentialsBinding',
+                credentialsId: 'aws-credentials',
+                accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+            ]]) {
+                def binds = params.binds ?: ""
+                def useGpu = params.useGpu ? "true" : "false"
+                def exclusive = params.exclusive ? "true" : "false"
 
-            def runOut = sh(
-                script: """
-                ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} \\
-                'bash ${REMOTE_SCRIPT_DIR}/library/run_job.sh \\
-                "${LOG_DIR}" "${SIF_PATH}" "${OVERLAY_PATH}" "${SSH_USER}" "${BUILD_JOB_ID}" \\
-                "${params.runMem}" "${params.runCPUs}" "${params.runTime}" "${IMAGE}" "${TMP_DIR}" \\
-                "${binds}" "${params.entrypointUrl}" "${useGpu}" "${exclusive}"'
-                """,
-                returnStdout: true
-            ).trim()
+                def remoteCommand = """
+                    AWS_ACCESS_KEY_ID=\\\$AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY=\\\$AWS_SECRET_ACCESS_KEY \\
+                    bash ${REMOTE_SCRIPT_DIR}/library/run_job.sh \\
+                    "${LOG_DIR}" "${SIF_PATH}" "${OVERLAY_PATH}" "${SSH_USER}" "${BUILD_JOB_ID}" \\
+                    "${params.runMem}" "${params.runCPUs}" "${params.runTime}" "${IMAGE}" "${TMP_DIR}" \\
+                    "${binds}" "${params.entrypointUrl}" "${useGpu}" "${exclusive}"
+                """
 
-            runJobId = (runOut =~ /Submitted batch job (\d+)/)?.getAt(0)?.getAt(1) ?: ""
-            echo "Run job submitted with ID: ${runJobId}"
+                def runOut = sh(
+                    script: "ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} '${remoteCommand}'",
+                    env: [
+                        "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}",
+                        "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}"
+                    ],
+                    returnStdout: true
+                ).trim()
+
+                runJobId = (runOut =~ /Submitted batch job (\d+)/)?.getAt(0)?.getAt(1) ?: ""
+                echo "Run job submitted with ID: ${runJobId}"
+            }
         }
 
         stage('Cleanup Remote Scripts') {
