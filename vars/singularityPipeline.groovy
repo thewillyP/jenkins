@@ -11,6 +11,7 @@ def call(Map params) {
         def TMP_DIR     = "${SCRATCH_DIR}/tmp"
         def DOCKER_URL  = params.dockerUrl
         def BUILD_JOB_ID = ""
+        def REMOTE_SCRIPT_DIR = "/tmp/jenkins_scripts"
 
         stage('Checkout Scripts') {
             checkout([
@@ -18,6 +19,10 @@ def call(Map params) {
                 branches: [[name: '*/main']],
                 userRemoteConfigs: [[url: 'https://github.com/thewillyP/jenkins.git']]
             ])
+            sh """
+            ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} 'mkdir -p ${REMOTE_SCRIPT_DIR}'
+            scp -o StrictHostKeyChecking=no -r library ${SSH_USER}@${EXEC_HOST}:${REMOTE_SCRIPT_DIR}/
+            """
         }
 
         stage('Detect Hostname') {
@@ -28,7 +33,7 @@ def call(Map params) {
         stage('Cancel Existing Jobs') {
             sh """
             ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} \\
-            'bash library/cancel_jobs.sh ${SSH_USER} ${IMAGE}'
+            'bash ${REMOTE_SCRIPT_DIR}/library/cancel_jobs.sh ${SSH_USER} ${IMAGE}'
             """
         }
 
@@ -42,7 +47,7 @@ def call(Map params) {
                 def buildOut = sh(
                     script: """
                     ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} \\
-                    'bash library/build_image.sh \\
+                    'bash ${REMOTE_SCRIPT_DIR}/library/build_image.sh \\
                     "${SCRATCH_DIR}" "${OVERLAY_PATH}" "${SIF_PATH}" "${DOCKER_URL}" "${LOG_DIR}" "${IMAGE}" \\
                     "${params.buildMem}" "${params.buildCPUs}" "${params.overlaySrc}" "${params.buildTime}"'
                     """,
@@ -68,7 +73,7 @@ def call(Map params) {
             def runOut = sh(
                 script: """
                 ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} \\
-                'bash library/run_job.sh \\
+                'bash ${REMOTE_SCRIPT_DIR}/library/run_job.sh \\
                 "${LOG_DIR}" "${SIF_PATH}" "${OVERLAY_PATH}" "${SSH_USER}" "${BUILD_JOB_ID}" \\
                 "${params.runMem}" "${params.runCPUs}" "${params.runTime}" "${IMAGE}" "${TMP_DIR}" \\
                 "${binds}" "${params.entrypointUrl}" "${useGpu}" "${exclusive}"'
@@ -78,6 +83,12 @@ def call(Map params) {
 
             runJobId = (runOut =~ /Submitted batch job (\d+)/)?.getAt(0)?.getAt(1) ?: ""
             echo "Run job submitted with ID: ${runJobId}"
+        }
+
+        stage('Cleanup Remote Scripts') {
+            sh """
+            ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} 'rm -rf ${REMOTE_SCRIPT_DIR}'
+            """
         }
     }
 
