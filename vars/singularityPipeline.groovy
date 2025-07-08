@@ -41,12 +41,12 @@ def call(Map params) {
                         rm -rf /tmp/scripts
                     """
                     def encodedScript = cancelScript.bytes.encodeBase64().toString()
-                    sh """
-                    ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} \\
-                    AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \\
-                    AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \\
-                    bash -c "echo '${encodedScript}' | base64 -d | bash"
-                    """
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} \\
+                        AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \\
+                        AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \\
+                        bash -c "echo '${encodedScript}' | base64 -d | bash"
+                    '''
                 }
             }
 
