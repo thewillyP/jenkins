@@ -80,17 +80,15 @@ def call(Map params) {
                     "${binds}" "${params.entrypointUrl}" "${useGpu}" "${exclusive}"
                 """
 
-                def runOut = sh(
-                    script: "ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} '${remoteCommand}'",
-                    returnStdout: true,
-                    env: [
-                        AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}",
-                        AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
-                    ]
-                ).trim()
+                withEnv(["AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}", "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}"]) {
+                    def runOut = sh(
+                        script: "ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} '${remoteCommand}'",
+                        returnStdout: true
+                    ).trim()
 
-                runJobId = (runOut =~ /Submitted batch job (\d+)/)?.getAt(0)?.getAt(1) ?: ""
-                echo "Run job submitted with ID: ${runJobId}"
+                    runJobId = (runOut =~ /Submitted batch job (\d+)/)?.getAt(0)?.getAt(1) ?: ""
+                    echo "Run job submitted with ID: ${runJobId}"
+                }
             }
         }
 
