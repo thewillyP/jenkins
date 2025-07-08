@@ -69,14 +69,28 @@ def call(Map params) {
                 accessKeyVariable: 'AWS_ACCESS_KEY_ID',
                 secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
             ]]) {
-                sh '''
-                    ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} \\
-                    AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \\
+                def binds = params.binds ?: ""
+                def useGpu = params.useGpu ? "true" : "false"
+                def exclusive = params.exclusive ? "true" : "false"
+
+                def remoteCommand = """
                     bash ${REMOTE_SCRIPT_DIR}/library/run_job.sh \\
                     "${LOG_DIR}" "${SIF_PATH}" "${OVERLAY_PATH}" "${SSH_USER}" "${BUILD_JOB_ID}" \\
                     "${params.runMem}" "${params.runCPUs}" "${params.runTime}" "${IMAGE}" "${TMP_DIR}" \\
-                    "${params.binds ?: ''}" "${params.entrypointUrl}" "${params.useGpu ? 'true' : 'false'}" "${params.exclusive ? 'true' : 'false'}"
-                '''
+                    "${binds}" "${params.entrypointUrl}" "${useGpu}" "${exclusive}"
+                """
+
+                def runOut = sh(
+                    script: "ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} '${remoteCommand}'",
+                    returnStdout: true,
+                    env: [
+                        AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}",
+                        AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+                    ]
+                ).trim()
+
+                runJobId = (runOut =~ /Submitted batch job (\d+)/)?.getAt(0)?.getAt(1) ?: ""
+                echo "Run job submitted with ID: ${runJobId}"
             }
         }
 
