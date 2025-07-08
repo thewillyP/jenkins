@@ -28,13 +28,10 @@ else
     SLURM_DEPENDENCY=""
 fi
 
-# Get current nodes your jobs are running on (exclude empty lines)
-EXCLUDE_NODES=$(squeue -u "$SSH_USER" -h -o '%N' | grep -v '^$' | tr ',' '\n' | sort -u | paste -sd ',' -)
-
-if [ -n "$EXCLUDE_NODES" ]; then
-    SBATCH_EXCLUDE="#SBATCH --exclude=$EXCLUDE_NODES"
+if [ "$EXCLUSIVE" = "true" ]; then
+    SBATCH_EXCLUSIVE="#SBATCH --exclusive"
 else
-    SBATCH_EXCLUDE=""
+    SBATCH_EXCLUSIVE=""
 fi
 
 MANDATORY_BINDS="/home/${SSH_USER}/.ssh,${TMP_DIR}:/tmp"
@@ -46,7 +43,7 @@ fi
 
 sbatch <<EOF
 #!/bin/bash
-${SBATCH_EXCLUDE}
+${SBATCH_EXCLUSIVE}
 #SBATCH --job-name=run_${IMAGE}
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
