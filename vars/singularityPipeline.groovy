@@ -19,18 +19,21 @@ def call(Map params) {
 
             stage('Cancel Existing Jobs') {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials', accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
-                    writeFile file: 'cancel_jobs_wrapper.sh', text: """
-                    #!/bin/bash
+                    sh """
+                    export AWS_ACCESS_KEY_ID=\${AWS_ACCESS_KEY_ID}
+                    export AWS_SECRET_ACCESS_KEY=\${AWS_SECRET_ACCESS_KEY}
                     ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} '
                         mkdir -p /tmp/scripts
                         curl -fsSL ${SCRIPT_BASE_URL}/cancel_jobs.sh -o /tmp/scripts/cancel_jobs.sh
                         curl -fsSL ${SCRIPT_BASE_URL}/cancel_jobs.sh.sig -o /tmp/scripts/cancel_jobs.sh.sig
-                        singularity run --env AWS_ACCESS_KEY_ID=\${AWS_ACCESS_KEY_ID} --env AWS_SECRET_ACCESS_KEY=\${AWS_SECRET_ACCESS_KEY} docker://amazon/aws-cli ssm get-parameter \\
-                        --name "/gpg/public-key" \\
-                        --with-decryption \\
-                        --region us-east-1 \\
-                        --query Parameter.Value \\
-                        --output text > /tmp/scripts/public.key
+                        export AWS_ACCESS_KEY_ID=\${AWS_ACCESS_KEY_ID}
+                        export AWS_SECRET_ACCESS_KEY=\${AWS_SECRET_ACCESS_KEY}
+                        singularity exec docker://amazon/aws-cli aws ssm get-parameter \
+                          --name "/gpg/public-key" \
+                          --with-decryption \
+                          --region us-east-1 \
+                          --query Parameter.Value \
+                          --output text > /tmp/scripts/public.key
                         gpg --import /tmp/scripts/public.key
                         gpg --verify /tmp/scripts/cancel_jobs.sh.sig /tmp/scripts/cancel_jobs.sh
                         if [ \$? -eq 0 ]; then
@@ -42,9 +45,6 @@ def call(Map params) {
                         rm -rf /tmp/scripts
                     '
                     """
-                    sh 'chmod +x cancel_jobs_wrapper.sh'
-                    sh './cancel_jobs_wrapper.sh'
-                    sh 'rm -f cancel_jobs_wrapper.sh'
                 }
             }
 
