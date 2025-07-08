@@ -32,7 +32,6 @@ def call(Map params) {
                             docker://amazon/aws-cli ssm get-parameter \
                             --name "/gpg/public-key" \
                             --with-decryption \
-                            --region us-east-1 \
                             --query Parameter.Value \
                             --output text > /tmp/scripts/public.key
                         gpg --import /tmp/scripts/public.key
