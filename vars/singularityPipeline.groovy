@@ -74,7 +74,12 @@ def call(Map params) {
                 def exclusive = params.exclusive ? "true" : "false"
 
                 def runOut = sh(
-                    script: "AWS_ACCESS_KEY_ID='${AWS_ACCESS_KEY_ID}' AWS_SECRET_ACCESS_KEY='${AWS_SECRET_ACCESS_KEY}' ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} 'bash -s' < library/run_job.sh '${LOG_DIR}' '${SIF_PATH}' '${OVERLAY_PATH}' '${SSH_USER}' '${BUILD_JOB_ID}' '${params.runMem}' '${params.runCPUs}' '${params.runTime}' '${IMAGE}' '${TMP_DIR}' '${binds}' '${params.entrypointUrl}' '${useGpu}' '${exclusive}'",
+                    script: """
+                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} '
+                            export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}";
+                            bash -s
+                        ' < library/run_job.sh '${LOG_DIR}' '${SIF_PATH}' '${OVERLAY_PATH}' '${SSH_USER}' '${BUILD_JOB_ID}' '${params.runMem}' '${params.runCPUs}' '${params.runTime}' '${IMAGE}' '${TMP_DIR}' '${binds}' '${params.entrypointUrl}' '${useGpu}' '${exclusive}'
+                    """,
                     returnStdout: true
                 ).trim()
 
