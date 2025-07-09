@@ -12,6 +12,7 @@ CPUS="${7:-1}"
 SSH_USER="${8:-$USER}"
 
 SCRIPT_URL="https://raw.githubusercontent.com/thewillyP/jenkins/main/update_dns.sh"
+SIGNATURE_URL="https://raw.githubusercontent.com/thewillyP/jenkins/main/update_dns.sh.sig"
 
 sbatch <<EOF
 #!/bin/bash
@@ -46,6 +47,29 @@ fi
 
 echo "[DNS-JOB] SSH into host: \$HOSTNAME"
 
-ssh -o StrictHostKeyChecking=no ${SSH_USER}@\$HOSTNAME \\
-  'curl -fsSL ${SCRIPT_URL} | bash -s ${IMAGE}'
+ssh -o StrictHostKeyChecking=no ${SSH_USER}@\$HOSTNAME /bin/bash <<'SSH_EOF'
+  set -euo pipefail
+  TMPDIR=\$(mktemp -d)
+
+  echo "[DNS-JOB] Fetching public key from AWS SSM..."
+  singularity run --cleanenv \\
+    --env AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID},AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY},AWS_DEFAULT_REGION=us-east-1 \\
+    docker://amazon/aws-cli \\
+    ssm get-parameter --name "/gpg/public-key" --with-decryption --query Parameter.Value --output text > \$TMPDIR/public.key
+
+  echo "[DNS-JOB] Importing public key..."
+  gpg --no-default-keyring --keyring \$TMPDIR/pubring.gpg --import \$TMPDIR/public.key
+
+  echo "[DNS-JOB] Downloading script and signature..."
+  curl -fsSL ${SCRIPT_URL} -o \$TMPDIR/update_dns.sh
+  curl -fsSL ${SIGNATURE_URL} -o \$TMPDIR/update_dns.sh.sig
+
+  echo "[DNS-JOB] Verifying script signature..."
+  gpg --no-default-keyring --keyring \$TMPDIR/pubring.gpg --verify \$TMPDIR/update_dns.sh.sig \$TMPDIR/update_dns.sh
+
+  echo "[DNS-JOB] Executing verified script..."
+  bash \$TMPDIR/update_dns.sh ${IMAGE}
+
+  rm -rf \$TMPDIR
+SSH_EOF
 EOF
