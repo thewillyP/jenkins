@@ -76,9 +76,10 @@ def call(Map params) {
                 def runOut = sh(
                     script: """
                         ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} '
-                            export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}";
-                            bash -s
-                        ' < library/run_job.sh '${LOG_DIR}' '${SIF_PATH}' '${OVERLAY_PATH}' '${SSH_USER}' '${BUILD_JOB_ID}' '${params.runMem}' '${params.runCPUs}' '${params.runTime}' '${IMAGE}' '${TMP_DIR}' '${binds}' '${params.entrypointUrl}' '${useGpu}' '${exclusive}'
+                            export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}";
+                            export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}";
+                            bash -s "${LOG_DIR}" "${SIF_PATH}" "${OVERLAY_PATH}" "${SSH_USER}" "${BUILD_JOB_ID}" "${params.runMem}" "${params.runCPUs}" "${params.runTime}" "${IMAGE}" "${TMP_DIR}" "${binds}" "${params.entrypointUrl}" "${useGpu}" "${exclusive}"
+                        ' < library/run_job.sh
                     """,
                     returnStdout: true
                 ).trim()
