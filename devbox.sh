@@ -41,7 +41,7 @@ verify_script "$DNS_SCRIPT_URL" "$DNS_SIGNATURE_URL" "$TMPDIR/update_dns.sh"
 echo "Executing verified update_dns.sh..."
 bash "$TMPDIR/update_dns.sh" devbox
 
-DNS_IP=$(< "$DNS_IP_FILE")
+DNS_IP=$(< ~/willyp_ip.txt)
 
 rm -rf "$TMPDIR"
 
