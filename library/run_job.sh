@@ -55,10 +55,37 @@ ${SBATCH_EXCLUSIVE}
 ${GPU_SLURM}
 ${SLURM_DEPENDENCY}
 
-curl -fsSL ${SCRIPT_URL} | singularity exec ${GPU_SINGULARITY} \\
+set -euo pipefail
+
+ENTRYPOINT_FILE=\$(mktemp)
+TMPDIR=\$(mktemp -d)
+
+curl -fsSL ${SCRIPT_URL} -o \$ENTRYPOINT_FILE
+curl -fsSL ${SCRIPT_URL}.sig -o \$TMPDIR/entrypoint.sh.sig
+
+singularity run --cleanenv \\
+    --env AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID},AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY},AWS_DEFAULT_REGION=us-east-1 \\
+    docker://amazon/aws-cli \\
+    ssm get-parameter --name "/gpg/public-key" --with-decryption --query Parameter.Value --output text > \$TMPDIR/public.key
+
+gpg --no-default-keyring --keyring \$TMPDIR/pubring.gpg --import \$TMPDIR/public.key
+gpg --no-default-keyring --keyring \$TMPDIR/pubring.gpg --verify \$TMPDIR/entrypoint.sh.sig \$ENTRYPOINT_FILE
+
+# Open entrypoint on FD 3 and unlink it
+exec 3<"\$ENTRYPOINT_FILE"
+rm "\$ENTRYPOINT_FILE"
+
+# Clean up everything else before running singularity
+rm -rf "\$TMPDIR"
+
+# Run entrypoint via FD
+singularity exec ${GPU_SINGULARITY} \\
   --containall --no-home --cleanenv \\
   --overlay ${OVERLAY_PATH}:rw \\
   --bind ${FULL_BINDS} \\
   ${SIF_PATH} \\
-  bash
+  bash <&3
+
+# Close FD
+exec 3<&-
 EOF
