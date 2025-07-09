@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=startup
+#SBATCH --job-name=jenkins
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
