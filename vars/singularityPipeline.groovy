@@ -11,7 +11,6 @@ def call(Map params) {
         def TMP_DIR     = "${SCRATCH_DIR}/tmp_${IMAGE}"
         def DOCKER_URL  = params.dockerUrl
         def BUILD_JOB_ID = ""
-        def REMOTE_SCRIPT_DIR = "/tmp/${sh(script: 'head /dev/urandom | tr -dc a-z0-9 | head -c 8', returnStdout: true).trim()}"
         def EXEC_HOST = sh(script: "hostname", returnStdout: true).trim()
         echo "Executor host: ${EXEC_HOST}"
 
@@ -21,16 +20,13 @@ def call(Map params) {
                 branches: [[name: '*/main']],
                 userRemoteConfigs: [[url: 'https://github.com/thewillyP/jenkins.git']]
             ])
-            sh """
-            ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} 'mkdir -p ${REMOTE_SCRIPT_DIR}'
-            scp -o StrictHostKeyChecking=no -r library ${SSH_USER}@${EXEC_HOST}:${REMOTE_SCRIPT_DIR}/
-            """
         }
 
         stage('Cancel Existing Jobs') {
             sh """
-            ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} \\
-            'bash ${REMOTE_SCRIPT_DIR}/library/cancel_jobs.sh ${SSH_USER} ${IMAGE}'
+            ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} '
+                bash -s "${SSH_USER}" "${IMAGE}"
+            ' < library/cancel_jobs.sh
             """
         }
 
@@ -43,10 +39,10 @@ def call(Map params) {
             if (params.forceRebuild || imageExists == "missing") {
                 def buildOut = sh(
                     script: """
-                    ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} \\
-                    'bash ${REMOTE_SCRIPT_DIR}/library/build_image.sh \\
-                    "${SCRATCH_DIR}" "${OVERLAY_PATH}" "${SIF_PATH}" "${DOCKER_URL}" "${LOG_DIR}" "${IMAGE}" \\
-                    "${params.buildMem}" "${params.buildCPUs}" "${params.overlaySrc}" "${params.buildTime}"'
+                    ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} '
+                        bash -s "${SCRATCH_DIR}" "${OVERLAY_PATH}" "${SIF_PATH}" "${DOCKER_URL}" "${LOG_DIR}" "${IMAGE}" \\
+                                "${params.buildMem}" "${params.buildCPUs}" "${params.overlaySrc}" "${params.buildTime}"
+                    ' < library/build_image.sh
                     """,
                     returnStdout: true
                 ).trim()
@@ -75,11 +71,11 @@ def call(Map params) {
 
                 def runOut = sh(
                     script: """
-                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} '
-                            export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}";
-                            export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}";
-                            bash -s "${LOG_DIR}" "${SIF_PATH}" "${OVERLAY_PATH}" "${SSH_USER}" "${BUILD_JOB_ID}" "${params.runMem}" "${params.runCPUs}" "${params.runTime}" "${IMAGE}" "${TMP_DIR}" "${binds}" "${params.entrypointUrl}" "${useGpu}" "${exclusive}"
-                        ' < library/run_job.sh
+                    ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} '
+                        export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}";
+                        export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}";
+                        bash -s "${LOG_DIR}" "${SIF_PATH}" "${OVERLAY_PATH}" "${SSH_USER}" "${BUILD_JOB_ID}" "${params.runMem}" "${params.runCPUs}" "${params.runTime}" "${IMAGE}" "${TMP_DIR}" "${binds}" "${params.entrypointUrl}" "${useGpu}" "${exclusive}"
+                    ' < library/run_job.sh
                     """,
                     returnStdout: true
                 ).trim()
@@ -87,12 +83,6 @@ def call(Map params) {
                 runJobId = (runOut =~ /Submitted batch job (\d+)/)?.getAt(0)?.getAt(1) ?: ""
                 echo "Run job submitted with ID: ${runJobId}"
             }
-        }
-
-        stage('Cleanup Remote Scripts') {
-            sh """
-            ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} 'rm -rf ${REMOTE_SCRIPT_DIR}'
-            """
         }
     }
 
