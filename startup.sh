@@ -23,10 +23,7 @@ if [ ! -f "$DNS_IP_FILE" ]; then
   exit 1
 fi
 
-TMPDIR="/scratch/wlp9800/.startup_tmp"
-mkdir -p "$TMPDIR"
-
-gpg-agent --daemon
+SCRIPT_TMPDIR=$(mktemp -d)
 
 # Function to fetch and verify script with GPG
 verify_script() {
@@ -38,41 +35,41 @@ verify_script() {
   singularity run --cleanenv \
     --env AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID},AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY},AWS_DEFAULT_REGION=us-east-1 \
     docker://amazon/aws-cli \
-    ssm get-parameter --name "/gpg/public-key" --with-decryption --query Parameter.Value --output text > $TMPDIR/public.key
+    ssm get-parameter --name "/gpg/public-key" --with-decryption --query Parameter.Value --output text > $SCRIPT_TMPDIR/public.key
 
   echo "Importing public key..."
-  gpg --no-default-keyring --keyring $TMPDIR/pubring.gpg --import $TMPDIR/public.key
+  gpg --no-default-keyring --keyring $SCRIPT_TMPDIR/pubring.gpg --import $SCRIPT_TMPDIR/public.key
 
   echo "Downloading script and signature..."
   curl -fsSL "$script_url" -o "$output_file"
   curl -fsSL "$signature_url" -o "$output_file.sig"
 
   echo "Verifying script signature..."
-  gpg --no-default-keyring --keyring $TMPDIR/pubring.gpg --verify "$output_file.sig" "$output_file"
+  gpg --no-default-keyring --keyring $SCRIPT_TMPDIR/pubring.gpg --verify "$output_file.sig" "$output_file"
 }
 
 # Run update_dns.sh with GPG verification
 DNS_SCRIPT_URL="https://raw.githubusercontent.com/thewillyP/jenkins/main/update_dns.sh"
 DNS_SIGNATURE_URL="https://raw.githubusercontent.com/thewillyP/jenkins/main/update_dns.sh.sig"
-verify_script "$DNS_SCRIPT_URL" "$DNS_SIGNATURE_URL" "$TMPDIR/update_dns.sh"
+verify_script "$DNS_SCRIPT_URL" "$DNS_SIGNATURE_URL" "$SCRIPT_TMPDIR/update_dns.sh"
 echo "Executing verified update_dns.sh..."
-bash "$TMPDIR/update_dns.sh" jenkins
+bash "$SCRIPT_TMPDIR/update_dns.sh" jenkins
 
 # Submit devbox job with GPG verification
 DEVBOX_SCRIPT_URL="https://raw.githubusercontent.com/thewillyP/jenkins/main/devbox.sh"
 DEVBOX_SIGNATURE_URL="https://raw.githubusercontent.com/thewillyP/jenkins/main/devbox.sh.sig"
-verify_script "$DEVBOX_SCRIPT_URL" "$DEVBOX_SIGNATURE_URL" "$TMPDIR/devbox.sh"
+verify_script "$DEVBOX_SCRIPT_URL" "$DEVBOX_SIGNATURE_URL" "$SCRIPT_TMPDIR/devbox.sh"
 echo "Submitting verified devbox.sh..."
-AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} sbatch "$TMPDIR/devbox.sh"
+AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} sbatch "$SCRIPT_TMPDIR/devbox.sh"
 
 # Submit startup.sh with GPG verification and dependency
 STARTUP_SCRIPT_URL="https://raw.githubusercontent.com/thewillyP/jenkins/main/startup.sh"
 STARTUP_SIGNATURE_URL="https://raw.githubusercontent.com/thewillyP/jenkins/main/startup.sh.sig"
-verify_script "$STARTUP_SCRIPT_URL" "$STARTUP_SIGNATURE_URL" "$TMPDIR/startup.sh"
+verify_script "$STARTUP_SCRIPT_URL" "$STARTUP_SIGNATURE_URL" "$SCRIPT_TMPDIR/startup.sh"
 echo "Submitting verified startup.sh with dependency..."
-AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} sbatch --dependency=afterok:$SLURM_JOB_ID "$TMPDIR/startup.sh"
+AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} sbatch --dependency=afterok:$SLURM_JOB_ID "$SCRIPT_TMPDIR/startup.sh"
 
-rm -rf "$TMPDIR"
+rm -rf "$SCRIPT_TMPDIR"
 
 # Run Jenkins container
 singularity run --containall --cleanenv --no-home \
