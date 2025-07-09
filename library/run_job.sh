@@ -81,6 +81,7 @@ rm -rf "\$TMPDIR"
 # Run entrypoint via FD
 singularity exec ${GPU_SINGULARITY} \\
   --containall --no-home --cleanenv \\
+  --env AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID},AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY},AWS_DEFAULT_REGION=us-east-1 \\
   --overlay ${OVERLAY_PATH}:rw \\
   --bind ${FULL_BINDS} \\
   ${SIF_PATH} \\
