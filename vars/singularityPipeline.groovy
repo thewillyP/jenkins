@@ -73,10 +73,7 @@ def call(Map params) {
                 def useGpu = params.useGpu ? "true" : "false"
                 def exclusive = params.exclusive ? "true" : "false"
 
-                // Debug command to test environment variable access
                 def remoteCommand = """
-                    echo "AWS_ACCESS_KEY_ID is set: \${AWS_ACCESS_KEY_ID:+true}" >&2;
-                    echo "AWS_SECRET_ACCESS_KEY is set: \${AWS_SECRET_ACCESS_KEY:+true}" >&2;
                     bash ${REMOTE_SCRIPT_DIR}/library/run_job.sh \\
                     "${LOG_DIR}" "${SIF_PATH}" "${OVERLAY_PATH}" "${SSH_USER}" "${BUILD_JOB_ID}" \\
                     "${params.runMem}" "${params.runCPUs}" "${params.runTime}" "${IMAGE}" "${TMP_DIR}" \\
@@ -84,13 +81,12 @@ def call(Map params) {
                 """
 
                 def runOut = sh(
-                    script: "set +x; ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} '${remoteCommand}'",
+                    script: "ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} AWS_ACCESS_KEY_ID='${AWS_ACCESS_KEY_ID}' AWS_SECRET_ACCESS_KEY='${AWS_SECRET_ACCESS_KEY}' ${remoteCommand}",
                     returnStdout: true
                 ).trim()
 
                 runJobId = (runOut =~ /Submitted batch job (\d+)/)?.getAt(0)?.getAt(1) ?: ""
                 echo "Run job submitted with ID: ${runJobId}"
-                echo "Debug output: ${runOut}"
             }
         }
 
