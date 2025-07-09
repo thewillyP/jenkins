@@ -24,6 +24,7 @@ if [ ! -f "$DNS_IP_FILE" ]; then
 fi
 
 TMPDIR="/scratch/wlp9800/.startup_tmp"
+mkdir -p "$TMPDIR"
 
 gpg-agent --daemon
 
