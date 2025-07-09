@@ -25,6 +25,8 @@ fi
 
 TMPDIR=$(mktemp -d)
 
+gpg-agent --daemon
+
 # Function to fetch and verify script with GPG
 verify_script() {
   local script_url=$1
