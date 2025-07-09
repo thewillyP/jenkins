@@ -73,15 +73,17 @@ def call(Map params) {
                 def useGpu = params.useGpu ? "true" : "false"
                 def exclusive = params.exclusive ? "true" : "false"
 
-                def remoteCommand = """
-                    bash ${REMOTE_SCRIPT_DIR}/library/run_job.sh \\
-                    "${LOG_DIR}" "${SIF_PATH}" "${OVERLAY_PATH}" "${SSH_USER}" "${BUILD_JOB_ID}" \\
-                    "${params.runMem}" "${params.runCPUs}" "${params.runTime}" "${IMAGE}" "${TMP_DIR}" \\
-                    "${binds}" "${params.entrypointUrl}" "${useGpu}" "${exclusive}"
-                """
-
                 def runOut = sh(
-                    script: "ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} AWS_ACCESS_KEY_ID='${AWS_ACCESS_KEY_ID}' AWS_SECRET_ACCESS_KEY='${AWS_SECRET_ACCESS_KEY}' ${remoteCommand}",
+                    script: """
+                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} bash -c \"
+                            export AWS_ACCESS_KEY_ID='${AWS_ACCESS_KEY_ID}'
+                            export AWS_SECRET_ACCESS_KEY='${AWS_SECRET_ACCESS_KEY}'
+                            bash ${REMOTE_SCRIPT_DIR}/library/run_job.sh \\
+                            '${LOG_DIR}' '${SIF_PATH}' '${OVERLAY_PATH}' '${SSH_USER}' '${BUILD_JOB_ID}' \\
+                            '${params.runMem}' '${params.runCPUs}' '${params.runTime}' '${IMAGE}' '${TMP_DIR}' \\
+                            '${binds}' '${params.entrypointUrl}' '${useGpu}' '${exclusive}'
+                        \"
+                    """,
                     returnStdout: true
                 ).trim()
 
