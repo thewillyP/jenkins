@@ -23,7 +23,7 @@ if [ ! -f "$DNS_IP_FILE" ]; then
   exit 1
 fi
 
-TMPDIR=$(mktemp -d)
+TMPDIR="/scratch/wlp9800/.startup_tmp"
 
 gpg-agent --daemon
 
