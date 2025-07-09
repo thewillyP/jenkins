@@ -20,8 +20,8 @@ RECORD="${SUBDOMAIN}.internal."
 DNS_ZONE="internal."
 
 # Get hostname
-HOSTNAME=$(hostname -f)
-CNAME_TARGET="${HOSTNAME}."
+CNAME_TARGET=$(dig +short -x "$(hostname -i)" | head -n1)
+# Can't use hostname -f because doesn't give FQDN for some reason...
 
 # Get DNS IP from file
 DNS_IP=$(cat ~/willyp_ip.txt)
