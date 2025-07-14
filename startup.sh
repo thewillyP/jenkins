@@ -16,13 +16,6 @@ export JENKINS_PORT=8245
 
 mkdir -p "$JENKINS_DATA_DIR" "$JENKINS_TMP_DIR"
 
-# Check DNS IP file
-DNS_IP_FILE=~/willyp_ip.txt
-if [ ! -f "$DNS_IP_FILE" ]; then
-  echo "DNS IP file ($DNS_IP_FILE) not found. Exiting."
-  exit 1
-fi
-
 SCRIPT_TMPDIR=$(mktemp -d)
 
 gpg-agent --daemon
@@ -57,13 +50,6 @@ verify_script "$DNS_SCRIPT_URL" "$DNS_SIGNATURE_URL" "$SCRIPT_TMPDIR/update_dns.
 echo "Executing verified update_dns.sh..."
 bash "$SCRIPT_TMPDIR/update_dns.sh" jenkins
 
-# Submit devbox job with GPG verification
-DEVBOX_SCRIPT_URL="https://raw.githubusercontent.com/thewillyP/jenkins/main/devbox.sh"
-DEVBOX_SIGNATURE_URL="https://raw.githubusercontent.com/thewillyP/jenkins/main/devbox.sh.sig"
-verify_script "$DEVBOX_SCRIPT_URL" "$DEVBOX_SIGNATURE_URL" "$SCRIPT_TMPDIR/devbox.sh"
-echo "Submitting verified devbox.sh..."
-AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} sbatch "$SCRIPT_TMPDIR/devbox.sh"
-
 # Submit startup.sh with GPG verification and dependency
 STARTUP_SCRIPT_URL="https://raw.githubusercontent.com/thewillyP/jenkins/main/startup.sh"
 STARTUP_SIGNATURE_URL="https://raw.githubusercontent.com/thewillyP/jenkins/main/startup.sh.sig"
@@ -79,5 +65,4 @@ singularity run --containall --cleanenv --no-home \
   --bind $JENKINS_DATA_DIR:/var/jenkins_home \
   --bind $JENKINS_TMP_DIR:/tmp \
   --bind /home/${USER}/.ssh \
-  --dns "$(cat ~/willyp_ip.txt)" \
   docker://jenkins/jenkins:lts-jdk17@sha256:3cc41bac7bdeba7fef4c5421f72d0143b08b288362e539143aed454a6c7dade5
