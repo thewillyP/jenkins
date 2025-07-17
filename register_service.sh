@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ $# -lt 8 ]]; then
-    echo "Usage: $0 <job_id> <image> <log_dir> [memory] [time] [cpus] [proxyjump] <port> [localforwards] [--skip-dep] [--use-ssh]"
+    echo "Usage: $0 <job_id> <image> <log_dir> [memory] [time] [cpus] [proxyjump] <port> [localforwards] [--skip-dep] [--dont-use-ssh]"
     exit 1
 fi
 
@@ -16,7 +16,7 @@ PROXYJUMP="${7:-greene}"
 PORT="$8"
 LOCALFORWARDS="${9:-}"
 SKIP_DEP="${10:-false}"
-USE_SSH="${11:-false}"
+DONT_USE_SSH="${11:-false}"
 
 SBATCH_DEPENDENCY=""
 if [[ "$SKIP_DEP" == "false" ]]; then
@@ -77,7 +77,7 @@ echo "[CONSUL-REGISTER] Deregistration attempt completed."
 
 # Build tags array
 TAGS='"user:${USER}", "proxyjump:${PROXYJUMP}"'
-if [[ "${USE_SSH}" != "false" ]]; then
+if [[ "${DONT_USE_SSH}" == "false" ]]; then
     TAGS="\${TAGS}, \"ssh\""
 fi
 
