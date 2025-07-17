@@ -49,14 +49,15 @@ verify_script "$REGISTER_SCRIPT_URL" "$REGISTER_SIGNATURE_URL" "$SCRIPT_TMPDIR/r
 echo "Submitting verified register_service.sh with dependency..."
 AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
     bash "$SCRIPT_TMPDIR/register_service.sh" \
-    $SLURM_JOB_ID \
+    "" \
     jenkins \
     /vast/wlp9800/logs \
     1G \
     00:05:00 \
     1 \
     greene \
-    $JENKINS_PORT
+    $JENKINS_PORT \
+    "8888:localhost:8245"
 
 # Submit startup.sh with GPG verification and dependency
 STARTUP_SCRIPT_URL="https://raw.githubusercontent.com/thewillyP/jenkins/main/startup.sh"

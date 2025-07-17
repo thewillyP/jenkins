@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-RUN_JOB_ID="$1"
+RUN_JOB_ID="${1:-}"
 IMAGE="$2"
 LOG_DIR="$3"
 MEMORY="${4:-1G}"
@@ -9,6 +9,13 @@ TIME="${5:-00:05:00}"
 CPUS="${6:-1}"
 PROXYJUMP="${7:-greene}"
 PORT="$8"
+LOCALFORWARDS="${9:-}"
+
+# Build sbatch command with conditional dependency
+SBATCH_DEPENDENCY=""
+if [[ -n "$RUN_JOB_ID" ]]; then
+ SBATCH_DEPENDENCY="#SBATCH --dependency=after:${RUN_JOB_ID}"
+fi
 
 sbatch <<EOF
 #!/bin/bash
@@ -20,27 +27,33 @@ sbatch <<EOF
 #SBATCH --cpus-per-task=${CPUS}
 #SBATCH --output=${LOG_DIR}/consul-register-%j.log
 #SBATCH --error=${LOG_DIR}/consul-register-%j.err
-#SBATCH --dependency=after:${RUN_JOB_ID}
+${SBATCH_DEPENDENCY}
 
 set -euo pipefail
 
-echo "[CONSUL-REGISTER] Checking job ${RUN_JOB_ID} state..."
-JOB_STATE=\$(sacct -j ${RUN_JOB_ID} --format=State --noheader | head -n1 | awk '{print \$1}')
-if [[ "\$JOB_STATE" != "RUNNING" ]]; then
-    echo "[CONSUL-REGISTER] Job \${RUN_JOB_ID} is in state '\$JOB_STATE' — not running, exiting cleanly."
-    exit 0
-fi
+# Only check job state if RUN_JOB_ID is provided
+if [[ -n "${RUN_JOB_ID}" ]]; then
+    echo "[CONSUL-REGISTER] Checking job ${RUN_JOB_ID} state..."
+    JOB_STATE=\$(sacct -j ${RUN_JOB_ID} --format=State --noheader | head -n1 | awk '{print \$1}')
+    if [[ "\$JOB_STATE" != "RUNNING" ]]; then
+        echo "[CONSUL-REGISTER] Job \${RUN_JOB_ID} is in state '\$JOB_STATE' — not running, exiting cleanly."
+        exit 0
+    fi
 
-echo "[CONSUL-REGISTER] Resolving host for job ${RUN_JOB_ID}..."
-HOSTNAME=\$(sacct -j ${RUN_JOB_ID} --format=NodeList --noheader | awk '{print \$1}' | head -n 1)
-if [[ -z "\$HOSTNAME" ]]; then
-    echo "Error: Could not determine host for job ${RUN_JOB_ID}"
-    exit 1
+    echo "[CONSUL-REGISTER] Resolving host for job ${RUN_JOB_ID}..."
+    HOSTNAME=\$(sacct -j ${RUN_JOB_ID} --format=NodeList --noheader | awk '{print \$1}' | head -n 1)
+    if [[ -z "\$HOSTNAME" ]]; then
+        echo "Error: Could not determine host for job ${RUN_JOB_ID}"
+        exit 1
+    fi
+else
+    echo "[CONSUL-REGISTER] No job ID provided, running immediately on current node..."
+    HOSTNAME=\$(hostname -s)
 fi
 
 echo "[CONSUL-REGISTER] Getting full hostname..."
 # Try to get the full hostname using DNS lookup
-FULL_HOSTNAME=\$(dig +short -x "\$(dig +short \$HOSTNAME)" | head -n1 | sed 's/\.$//') 
+FULL_HOSTNAME=\$(dig +short -x "\$(dig +short \$HOSTNAME)" | head -n1 | sed 's/\.$//')
 if [[ -z "\$FULL_HOSTNAME" ]]; then
     echo "[CONSUL-REGISTER] Could not resolve full hostname, using short hostname: \$HOSTNAME"
     FULL_HOSTNAME=\$HOSTNAME
@@ -65,20 +78,36 @@ curl --silent --output /dev/null --write-out "%{http_code}" \
      \$CONSUL_ENDPOINT/v1/agent/service/deregister/${IMAGE}
 echo "[CONSUL-REGISTER] Deregistration attempt completed."
 
-echo "[CONSUL-REGISTER] Registering service with Consul at \$CONSUL_ENDPOINT..."
+# Build tags array
+TAGS='"user:${USER}", "proxyjump:${PROXYJUMP}", "ssh"'
 
+# Add LocalForward tags if provided
+if [[ -n "${LOCALFORWARDS}" ]]; then
+    echo "[CONSUL-REGISTER] Processing LocalForwards: ${LOCALFORWARDS}"
+    # Split comma-separated localforwards and add as tags
+    IFS=',' read -ra FORWARDS <<< "${LOCALFORWARDS}"
+    for forward in "\${FORWARDS[@]}"; do
+        # Trim whitespace
+        forward=\$(echo "\$forward" | xargs)
+        if [[ -n "\$forward" ]]; then
+            TAGS="\$TAGS, \"localforward:\$forward\""
+        fi
+    done
+fi
+
+echo "[CONSUL-REGISTER] Registering service with Consul at \$CONSUL_ENDPOINT..."
 # Register the service with Consul
 curl --request PUT --data @- \$CONSUL_ENDPOINT/v1/agent/service/register <<CONSUL_EOF
 {
-    "Name": "${IMAGE}",
-    "Tags": ["user:${USER}", "proxyjump:${PROXYJUMP}", "ssh"],
-    "Address": "\$FULL_HOSTNAME",
-    "Port": ${PORT},
-    "Check": {
-        "TCP": "\$FULL_HOSTNAME:${PORT}",
-        "Interval": "10s",
-        "Timeout": "1s"
-    }
+ "Name": "${IMAGE}",
+ "Tags": [\$TAGS],
+ "Address": "\$FULL_HOSTNAME",
+ "Port": ${PORT},
+ "Check": {
+  "TCP": "\$FULL_HOSTNAME:${PORT}",
+  "Interval": "10s",
+  "Timeout": "1s"
+ }
 }
 CONSUL_EOF
 
