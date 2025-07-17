@@ -59,6 +59,12 @@ if [[ -z "\$CONSUL_ENDPOINT" ]]; then
     exit 1
 fi
 
+echo "[CONSUL-REGISTER] Attempting to deregister existing service '${IMAGE}' (if present)..."
+curl --silent --output /dev/null --write-out "%{http_code}" \
+     --request PUT \
+     \$CONSUL_ENDPOINT/v1/agent/service/deregister/${IMAGE}
+echo "[CONSUL-REGISTER] Deregistration attempt completed."
+
 echo "[CONSUL-REGISTER] Registering service with Consul at \$CONSUL_ENDPOINT..."
 
 # Register the service with Consul
