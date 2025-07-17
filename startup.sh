@@ -17,7 +17,7 @@ export JENKINS_PORT=8245
 mkdir -p "$JENKINS_DATA_DIR" "$JENKINS_TMP_DIR"
 
 SCRIPT_TMPDIR=$(mktemp -d)
-gpg-agent --daemon
+gpgconf --launch gpg-agent
 
 # Function to fetch and verify script with GPG
 verify_script() {
