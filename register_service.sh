@@ -1,7 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
-RUN_JOB_ID="${1:-}"
+if [[ $# -lt 8 ]]; then
+    echo "Usage: $0 <job_id> <image> <log_dir> [memory] [time] [cpus] [proxyjump] <port> [localforwards] [--skip-dep]"
+    exit 1
+fi
+
+RUN_JOB_ID="$1"
 IMAGE="$2"
 LOG_DIR="$3"
 MEMORY="${4:-1G}"
@@ -10,11 +15,11 @@ CPUS="${6:-1}"
 PROXYJUMP="${7:-greene}"
 PORT="$8"
 LOCALFORWARDS="${9:-}"
+SKIP_DEP="${10:-false}"
 
-# Build sbatch command with conditional dependency
 SBATCH_DEPENDENCY=""
-if [[ -n "$RUN_JOB_ID" ]]; then
- SBATCH_DEPENDENCY="#SBATCH --dependency=after:${RUN_JOB_ID}"
+if [[ "$SKIP_DEP" == "false" ]]; then
+    SBATCH_DEPENDENCY="#SBATCH --dependency=after:${RUN_JOB_ID}"
 fi
 
 sbatch <<EOF
@@ -31,29 +36,22 @@ ${SBATCH_DEPENDENCY}
 
 set -euo pipefail
 
-# Only check job state if RUN_JOB_ID is provided
-if [[ -n "${RUN_JOB_ID}" ]]; then
-    echo "[CONSUL-REGISTER] Checking job ${RUN_JOB_ID} state..."
-    JOB_STATE=\$(sacct -j ${RUN_JOB_ID} --format=State --noheader | head -n1 | awk '{print \$1}')
-    if [[ "\$JOB_STATE" != "RUNNING" ]]; then
-        echo "[CONSUL-REGISTER] Job \${RUN_JOB_ID} is in state '\$JOB_STATE' — not running, exiting cleanly."
-        exit 0
-    fi
+echo "[CONSUL-REGISTER] Checking job ${RUN_JOB_ID} state..."
+JOB_STATE=\$(sacct -j ${RUN_JOB_ID} --format=State --noheader | head -n1 | awk '{print \$1}')
+if [[ "\$JOB_STATE" != "RUNNING" ]]; then
+    echo "[CONSUL-REGISTER] Job \${RUN_JOB_ID} is in state '\$JOB_STATE' — not running, exiting cleanly."
+    exit 0
+fi
 
-    echo "[CONSUL-REGISTER] Resolving host for job ${RUN_JOB_ID}..."
-    HOSTNAME=\$(sacct -j ${RUN_JOB_ID} --format=NodeList --noheader | awk '{print \$1}' | head -n 1)
-    if [[ -z "\$HOSTNAME" ]]; then
-        echo "Error: Could not determine host for job ${RUN_JOB_ID}"
-        exit 1
-    fi
-else
-    echo "[CONSUL-REGISTER] No job ID provided, running immediately on current node..."
-    HOSTNAME=\$(hostname -s)
+echo "[CONSUL-REGISTER] Resolving host for job ${RUN_JOB_ID}..."
+HOSTNAME=\$(sacct -j ${RUN_JOB_ID} --format=NodeList --noheader | awk '{print \$1}' | head -n 1)
+if [[ -z "\$HOSTNAME" ]]; then
+    echo "Error: Could not determine host for job ${RUN_JOB_ID}"
+    exit 1
 fi
 
 echo "[CONSUL-REGISTER] Getting full hostname..."
-# Try to get the full hostname using DNS lookup
-FULL_HOSTNAME=\$(dig +short -x "\$(dig +short \$HOSTNAME)" | head -n1 | sed 's/\.$//')
+FULL_HOSTNAME=\$(dig +short -x "\$(getent hosts "\$HOSTNAME" | awk '{print \$1}')" | head -n1)
 if [[ -z "\$FULL_HOSTNAME" ]]; then
     echo "[CONSUL-REGISTER] Could not resolve full hostname, using short hostname: \$HOSTNAME"
     FULL_HOSTNAME=\$HOSTNAME
@@ -73,9 +71,7 @@ if [[ -z "\$CONSUL_ENDPOINT" ]]; then
 fi
 
 echo "[CONSUL-REGISTER] Attempting to deregister existing service '${IMAGE}' (if present)..."
-curl --silent --output /dev/null --write-out "%{http_code}" \
-     --request PUT \
-     \$CONSUL_ENDPOINT/v1/agent/service/deregister/${IMAGE}
+curl --silent --output /dev/null --write-out "%{http_code}" --request PUT \$CONSUL_ENDPOINT/v1/agent/service/deregister/${IMAGE}
 echo "[CONSUL-REGISTER] Deregistration attempt completed."
 
 # Build tags array
@@ -84,10 +80,8 @@ TAGS='"user:${USER}", "proxyjump:${PROXYJUMP}", "ssh"'
 # Add LocalForward tags if provided
 if [[ -n "${LOCALFORWARDS}" ]]; then
     echo "[CONSUL-REGISTER] Processing LocalForwards: ${LOCALFORWARDS}"
-    # Split comma-separated localforwards and add as tags
     IFS=',' read -ra FORWARDS <<< "${LOCALFORWARDS}"
     for forward in "\${FORWARDS[@]}"; do
-        # Trim whitespace
         forward=\$(echo "\$forward" | xargs)
         if [[ -n "\$forward" ]]; then
             TAGS="\$TAGS, \"localforward:\$forward\""
@@ -96,7 +90,6 @@ if [[ -n "${LOCALFORWARDS}" ]]; then
 fi
 
 echo "[CONSUL-REGISTER] Registering service with Consul at \$CONSUL_ENDPOINT..."
-# Register the service with Consul
 curl --request PUT --data @- \$CONSUL_ENDPOINT/v1/agent/service/register <<CONSUL_EOF
 {
  "Name": "${IMAGE}",
