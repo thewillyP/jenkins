@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ $# -lt 8 ]]; then
-    echo "Usage: $0 <job_id> <image> <log_dir> [memory] [time] [cpus] [proxyjump] <port> [localforwards] [--skip-dep]"
+    echo "Usage: $0 <job_id> <image> <log_dir> [memory] [time] [cpus] [proxyjump] <port> [localforwards] [--skip-dep] [--use-ssh]"
     exit 1
 fi
 
@@ -16,6 +16,7 @@ PROXYJUMP="${7:-greene}"
 PORT="$8"
 LOCALFORWARDS="${9:-}"
 SKIP_DEP="${10:-false}"
+USE_SSH="${11:-false}"
 
 SBATCH_DEPENDENCY=""
 if [[ "$SKIP_DEP" == "false" ]]; then
@@ -75,7 +76,10 @@ curl --silent --output /dev/null --write-out "%{http_code}" --request PUT \$CONS
 echo "[CONSUL-REGISTER] Deregistration attempt completed."
 
 # Build tags array
-TAGS='"user:${USER}", "proxyjump:${PROXYJUMP}", "ssh"'
+TAGS='"user:${USER}", "proxyjump:${PROXYJUMP}"'
+if [[ "${USE_SSH}" != "false" ]]; then
+    TAGS="\${TAGS}, \"ssh\""
+fi
 
 # Add LocalForward tags if provided
 if [[ -n "${LOCALFORWARDS}" ]]; then
