@@ -58,7 +58,7 @@ AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS
     greene \
     $JENKINS_PORT \
     "8888:localhost:8245" \
-    --skip-dep \ 
+    --skip-dep \
     --dont-use-ssh
 
 # Submit startup.sh with GPG verification and dependency
