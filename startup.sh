@@ -4,7 +4,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=4G
-#SBATCH --time=3-00:00:00
+#SBATCH --time=06:00:00
 #SBATCH --output="/vast/wlp9800/logs/%x-%j.out"
 #SBATCH --error="/vast/wlp9800/logs/%x-%j.err"
 
