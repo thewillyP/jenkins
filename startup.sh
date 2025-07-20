@@ -4,17 +4,17 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=4G
-#SBATCH --time=7-00:00:00
+#SBATCH --time=3-00:00:00
 #SBATCH --output="/vast/wlp9800/logs/%x-%j.out"
 #SBATCH --error="/vast/wlp9800/logs/%x-%j.err"
 
 set -euo pipefail
 
 export JENKINS_DATA_DIR=/scratch/wlp9800/jenkins
-export JENKINS_TMP_DIR=/scratch/wlp9800/jenkins_tmp
-export JENKINS_PORT=8245
+export JENKINS_PORT=8333
+export LOCAL_PORT=9999
 
-mkdir -p "$JENKINS_DATA_DIR" "$JENKINS_TMP_DIR"
+mkdir -p "$JENKINS_DATA_DIR"
 
 SCRIPT_TMPDIR=$(mktemp -d)
 gpgconf --launch gpg-agent
@@ -57,7 +57,7 @@ AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS
     1 \
     greene \
     $JENKINS_PORT \
-    "8888:localhost:8245" \
+    "${LOCAL_PORT}:localhost:${JENKINS_PORT}" \
     --skip-dep \
     --dont-use-ssh
 
@@ -74,6 +74,6 @@ rm -rf "$SCRIPT_TMPDIR"
 singularity run --containall --cleanenv --no-home \
     --env JENKINS_OPTS="--httpPort=$JENKINS_PORT" \
     --bind $JENKINS_DATA_DIR:/var/jenkins_home \
-    --bind $JENKINS_TMP_DIR:/tmp \
+    --bind $SLURM_TMPDIR:/tmp \
     --bind /home/${USER}/.ssh \
-    docker://jenkins/jenkins:lts-jdk17@sha256:3cc41bac7bdeba7fef4c5421f72d0143b08b288362e539143aed454a6c7dade5
+    docker://jenkins/jenkins:lts-jdk21
