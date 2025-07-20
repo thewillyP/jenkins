@@ -62,11 +62,11 @@ AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS
     --dont-use-ssh
 
 # Submit startup.sh with GPG verification and dependency
-STARTUP_SCRIPT_URL="https://raw.githubusercontent.com/thewillyP/jenkins/main/startup.sh"
-STARTUP_SIGNATURE_URL="https://raw.githubusercontent.com/thewillyP/jenkins/main/startup.sh.sig"
-verify_script "$STARTUP_SCRIPT_URL" "$STARTUP_SIGNATURE_URL" "$SCRIPT_TMPDIR/startup.sh"
-echo "Submitting verified startup.sh with dependency..."
-AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} sbatch --dependency=afterany:$SLURM_JOB_ID "$SCRIPT_TMPDIR/startup.sh"
+#STARTUP_SCRIPT_URL="https://raw.githubusercontent.com/thewillyP/jenkins/main/startup.sh"
+#STARTUP_SIGNATURE_URL="https://raw.githubusercontent.com/thewillyP/jenkins/main/startup.sh.sig"
+#verify_script "$STARTUP_SCRIPT_URL" "$STARTUP_SIGNATURE_URL" "$SCRIPT_TMPDIR/startup.sh"
+#echo "Submitting verified startup.sh with dependency..."
+#AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} sbatch --dependency=afterany:$SLURM_JOB_ID "$SCRIPT_TMPDIR/startup.sh"
 
 rm -rf "$SCRIPT_TMPDIR"
 
