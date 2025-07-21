@@ -22,20 +22,20 @@ def call(Map params) {
         sshagent(['greene-ssh-key']) {
             stage('Cancel Existing Jobs') {
                 sh """
-                ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} '
+                ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${SSH_USER}@${EXEC_HOST} '
                     bash -s "${SSH_USER}" "${IMAGE}"
                 ' < library/cancel_jobs.sh
                 """
             }
             stage('Build Image If Needed') {
                 def imageExists = sh(
-                    script: "ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} '[ -f ${SIF_PATH} ] && echo exists || echo missing'",
+                    script: "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${SSH_USER}@${EXEC_HOST} '[ -f ${SIF_PATH} ] && echo exists || echo missing'",
                     returnStdout: true
                 ).trim()
                 if (params.forceRebuild || imageExists == "missing") {
                     def buildOut = sh(
                         script: """
-                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} '
+                        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${SSH_USER}@${EXEC_HOST} '
                             bash -s "${SCRATCH_DIR}" "${OVERLAY_PATH}" "${SIF_PATH}" "${DOCKER_URL}" "${LOG_DIR}" "${IMAGE}" \\
                                     "${params.buildMem}" "${params.buildCPUs}" "${params.overlaySrc}" "${params.buildTime}"
                         ' < library/build_image.sh
@@ -48,7 +48,7 @@ def call(Map params) {
             }
             stage('Create TMP Directory') {
                 sh """
-                ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} 'mkdir -p ${TMP_DIR}'
+                ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${SSH_USER}@${EXEC_HOST} 'mkdir -p ${TMP_DIR}'
                 """
             }
             stage('Submit Run Job') {
@@ -63,7 +63,7 @@ def call(Map params) {
                     def exclusive = params.exclusive ? "true" : "false"
                     def runOut = sh(
                         script: """
-                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${EXEC_HOST} '
+                        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${SSH_USER}@${EXEC_HOST} '
                             export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}";
                             export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}";
                             bash -s "${LOG_DIR}" "${SIF_PATH}" "${OVERLAY_PATH}" "${SSH_USER}" "${BUILD_JOB_ID}" "${params.runMem}" "${params.runCPUs}" "${params.runTime}" "${IMAGE}" "${TMP_DIR}" "${binds}" "${params.entrypointUrl}" "${useGpu}" "${exclusive}"
