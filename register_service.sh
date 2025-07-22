@@ -99,12 +99,7 @@ curl --request PUT --data @- \$CONSUL_ENDPOINT/v1/agent/service/register <<CONSU
  "Name": "${IMAGE}",
  "Tags": [\$TAGS],
  "Address": "\$FULL_HOSTNAME",
- "Port": ${PORT},
- "Check": {
-  "TCP": "\$FULL_HOSTNAME:${PORT}",
-  "Interval": "10s",
-  "Timeout": "1s"
- }
+ "Port": ${PORT}
 }
 CONSUL_EOF
 
