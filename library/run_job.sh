@@ -10,9 +10,15 @@ TIME=$8
 IMAGE=$9
 TMP_DIR=${10}
 USER_BINDS=${11}
-SCRIPT_URL=${12}
-USE_GPU=${13}
-EXCLUSIVE=${14}
+REPO=${12}
+COMMIT=${13}
+SCRIPT_PATH=${14}
+USE_GPU=${15}
+EXCLUSIVE=${16}
+ACCOUNT=${17:-}
+SSH_BIND=${18:-/home/${SSH_USER}/.ssh}
+
+SCRIPT_URL="https://raw.githubusercontent.com/${REPO}/${COMMIT}/${SCRIPT_PATH}"
 
 if [ "$USE_GPU" = "true" ]; then
     GPU_SLURM="#SBATCH --gres=gpu:1"
@@ -34,7 +40,12 @@ else
     SBATCH_EXCLUSIVE=""
 fi
 
-MANDATORY_BINDS="/home/${SSH_USER}/.ssh,${TMP_DIR}:/tmp"
+ACCOUNT_DIRECTIVE=""
+if [[ -n "$ACCOUNT" ]]; then
+    ACCOUNT_DIRECTIVE="#SBATCH --account=${ACCOUNT}"
+fi
+
+MANDATORY_BINDS="${SSH_BIND},${TMP_DIR}:/tmp"
 if [ -n "$USER_BINDS" ]; then
     FULL_BINDS="${MANDATORY_BINDS},${USER_BINDS}"
 else
@@ -54,29 +65,17 @@ ${SBATCH_EXCLUSIVE}
 #SBATCH --error=${LOG_DIR}/run-${IMAGE}-%j.err
 ${GPU_SLURM}
 ${SLURM_DEPENDENCY}
+${ACCOUNT_DIRECTIVE}
 
 set -euo pipefail
 
 ENTRYPOINT_FILE=\$(mktemp)
-TMPDIR=\$(mktemp -d)
 
 curl -fsSL ${SCRIPT_URL} -o \$ENTRYPOINT_FILE
-curl -fsSL ${SCRIPT_URL}.sig -o \$TMPDIR/entrypoint.sh.sig
-
-singularity run --cleanenv \\
-    --env AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID},AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY},AWS_DEFAULT_REGION=us-east-1 \\
-    docker://amazon/aws-cli \\
-    ssm get-parameter --name "/gpg/public-key" --with-decryption --query Parameter.Value --output text > \$TMPDIR/public.key
-
-gpg --no-default-keyring --keyring \$TMPDIR/pubring.gpg --import \$TMPDIR/public.key
-gpg --no-default-keyring --keyring \$TMPDIR/pubring.gpg --verify \$TMPDIR/entrypoint.sh.sig \$ENTRYPOINT_FILE
 
 # Open entrypoint on FD 3 and unlink it
 exec 3<"\$ENTRYPOINT_FILE"
 rm "\$ENTRYPOINT_FILE"
-
-# Clean up everything else before running singularity
-rm -rf "\$TMPDIR"
 
 # Run entrypoint via FD
 singularity exec ${GPU_SINGULARITY} \\

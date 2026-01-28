@@ -2,12 +2,12 @@
 set -euo pipefail
 
 if [[ $# -lt 8 ]]; then
-    echo "Usage: $0 <job_id> <image> <log_dir> [memory] [time] [cpus] [proxyjump] <port> [localforwards] [--skip-dep] [--dont-use-ssh]"
+    echo "Usage: $0 <job_id> <service_name> <log_dir> <memory> <time> <cpus> <proxyjump> <port> [localforwards] [ssh_user] [skip_dep] [dont_use_ssh] [account]"
     exit 1
 fi
 
 RUN_JOB_ID="$1"
-IMAGE="$2"
+SERVICE_NAME="$2"
 LOG_DIR="$3"
 MEMORY="${4:-1G}"
 TIME="${5:-00:05:00}"
@@ -15,12 +15,19 @@ CPUS="${6:-1}"
 PROXYJUMP="${7:-greene}"
 PORT="$8"
 LOCALFORWARDS="${9:-}"
-SKIP_DEP="${10:-false}"
-DONT_USE_SSH="${11:-false}"
+SSH_USER="${10:-${USER}}"
+SKIP_DEP="${11:-0}"
+DONT_USE_SSH="${12:-0}"
+ACCOUNT="${13:-}"
 
 SBATCH_DEPENDENCY=""
-if [[ "$SKIP_DEP" == "false" ]]; then
+if [[ "$SKIP_DEP" -eq 0 ]]; then
     SBATCH_DEPENDENCY="#SBATCH --dependency=after:${RUN_JOB_ID}"
+fi
+
+ACCOUNT_DIRECTIVE=""
+if [[ -n "$ACCOUNT" ]]; then
+    ACCOUNT_DIRECTIVE="#SBATCH --account=${ACCOUNT}"
 fi
 
 sbatch <<EOF
@@ -34,6 +41,7 @@ sbatch <<EOF
 #SBATCH --output=${LOG_DIR}/consul-register-%j.log
 #SBATCH --error=${LOG_DIR}/consul-register-%j.err
 ${SBATCH_DEPENDENCY}
+${ACCOUNT_DIRECTIVE}
 
 set -euo pipefail
 
@@ -71,17 +79,15 @@ if [[ -z "\$CONSUL_ENDPOINT" ]]; then
     exit 1
 fi
 
-echo "[CONSUL-REGISTER] Attempting to deregister existing service '${IMAGE}' (if present)..."
-curl --silent --output /dev/null --write-out "%{http_code}" --request PUT \$CONSUL_ENDPOINT/v1/agent/service/deregister/${IMAGE}
+echo "[CONSUL-REGISTER] Attempting to deregister existing service '${SERVICE_NAME}' (if present)..."
+curl --silent --output /dev/null --write-out "%{http_code}" --request PUT \$CONSUL_ENDPOINT/v1/agent/service/deregister/${SERVICE_NAME}
 echo "[CONSUL-REGISTER] Deregistration attempt completed."
 
-# Build tags array
-TAGS='"user:${USER}", "proxyjump:${PROXYJUMP}"'
-if [[ "${DONT_USE_SSH}" == "false" ]]; then
+TAGS='"user:${SSH_USER}", "proxyjump:${PROXYJUMP}"'
+if [[ "${DONT_USE_SSH}" -eq 0 ]]; then
     TAGS="\${TAGS}, \"ssh\""
 fi
 
-# Add LocalForward tags if provided
 if [[ -n "${LOCALFORWARDS}" ]]; then
     echo "[CONSUL-REGISTER] Processing LocalForwards: ${LOCALFORWARDS}"
     IFS=',' read -ra FORWARDS <<< "${LOCALFORWARDS}"
@@ -96,7 +102,7 @@ fi
 echo "[CONSUL-REGISTER] Registering service with Consul at \$CONSUL_ENDPOINT..."
 curl --request PUT --data @- \$CONSUL_ENDPOINT/v1/agent/service/register <<CONSUL_EOF
 {
- "Name": "${IMAGE}",
+ "Name": "${SERVICE_NAME}",
  "Tags": [\$TAGS],
  "Address": "\$FULL_HOSTNAME",
  "Port": ${PORT}

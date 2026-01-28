@@ -10,6 +10,12 @@ MEMORY=$7
 CPUS=$8
 OVERLAY_SRC=$9
 TIME=${10}
+ACCOUNT=${11:-}
+
+ACCOUNT_DIRECTIVE=""
+if [[ -n "$ACCOUNT" ]]; then
+    ACCOUNT_DIRECTIVE="#SBATCH --account=${ACCOUNT}"
+fi
 
 sbatch <<EOF
 #!/bin/bash
@@ -21,6 +27,7 @@ sbatch <<EOF
 #SBATCH --time=${TIME}
 #SBATCH --output=${LOG_DIR}/build-${IMAGE}-%j.log
 #SBATCH --error=${LOG_DIR}/build-${IMAGE}-%j.err
+${ACCOUNT_DIRECTIVE}
 
 mkdir -p ${SCRATCH_DIR}/images
 cp -rp ${OVERLAY_SRC} ${OVERLAY_PATH}.gz
