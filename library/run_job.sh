@@ -17,6 +17,7 @@ USE_GPU=${15}
 EXCLUSIVE=${16}
 ACCOUNT=${17:-}
 SSH_BIND=${18:-/home/${SSH_USER}/.ssh}
+FAKEROOT=${19:-0}
 
 SCRIPT_URL="https://raw.githubusercontent.com/${REPO}/${COMMIT}/${SCRIPT_PATH}"
 
@@ -43,6 +44,12 @@ fi
 ACCOUNT_DIRECTIVE=""
 if [[ -n "$ACCOUNT" ]]; then
     ACCOUNT_DIRECTIVE="#SBATCH --account=${ACCOUNT}"
+fi
+
+if [ "$FAKEROOT" -eq 1 ]; then
+    FAKEROOT_FLAG="--fakeroot"
+else
+    FAKEROOT_FLAG=""
 fi
 
 MANDATORY_BINDS="${SSH_BIND},${TMP_DIR}:/tmp"
@@ -78,7 +85,7 @@ exec 3<"\$ENTRYPOINT_FILE"
 rm "\$ENTRYPOINT_FILE"
 
 # Run entrypoint via FD
-singularity exec ${GPU_SINGULARITY} \\
+singularity exec ${GPU_SINGULARITY} ${FAKEROOT_FLAG} \\
   --containall --no-home --cleanenv \\
   --env AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID},AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY},AWS_DEFAULT_REGION=us-east-1 \\
   --overlay ${OVERLAY_PATH}:rw \\

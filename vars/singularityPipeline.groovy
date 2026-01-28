@@ -13,6 +13,7 @@ def call(Map params) {
         def CLUSTER      = params.cluster
         def ACCOUNT      = params.account ?: ""
         def SSH_BIND     = params.sshBind ?: "/home/${SSH_USER}/.ssh"
+        def FAKEROOT     = params.fakeroot ? "1" : "0"
 
         echo "Cluster: ${CLUSTER}"
 
@@ -74,7 +75,7 @@ def call(Map params) {
                         bash -s "${LOG_DIR}" "${SIF_PATH}" "${OVERLAY_PATH}" "${SSH_USER}" "${BUILD_JOB_ID}" \\
                             "${params.runMem}" "${params.runCPUs}" "${params.runTime}" "${IMAGE}" "${TMP_DIR}" \\
                             "${binds}" "${params.entrypointRepo}" "${params.entrypointCommit}" "${params.entrypointPath}" \\
-                            "${useGpu}" "${exclusive}" "${ACCOUNT}" "${SSH_BIND}"
+                            "${useGpu}" "${exclusive}" "${ACCOUNT}" "${SSH_BIND}" "${FAKEROOT}"
                     ' < library/run_job.sh
                     """,
                     returnStdout: true
